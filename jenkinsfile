@@ -1,0 +1,49 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Checkout') {
+            steps {
+                // Checkout your code from your version control system
+                git 'https://github.com/Mansi-0106/SUNNY-LAKE_GREENS'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                // Build your project, for example, using Maven
+                sh 'mvn clean package'
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            environment {
+                // Define the SonarQube server URL and the authentication token
+                SONARQUBE_URL = 'http://localhost:9000'
+                SONARQUBE_TOKEN = credentials('sprintprod')
+            }
+            steps {
+                script {
+                    def scannerHome = tool 'SonarQube Scanner'
+                    withSonarQubeEnv('SonarQube') {
+                        sh "${scannerHome}/bin/sonar-scanner -Dsonar.host.url=${SONARQUBE_URL} -Dsonar.login=${SONARQUBE_TOKEN}"
+                    }
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 1, unit: 'HOURS') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            // Clean up or final steps
+        }
+    }
+}
